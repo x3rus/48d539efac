@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-app
+  labels:
+    app: simple-app
+    version: v1.2
+spec:
+  selector:
+    matchLabels:
+      app: simple-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: simple-app
+    spec:
+      containers:
+      - name: simple-app
+        image: gbolo/sample-app:1.2
+        ports:
+        - containerPort: 60021
+        env:
+        - name: APP_SERVER_BIND_PORT
+          value: "60021"
+        - name: APP_DATABASE_DSN     # Improvement: use a secret to store the password
+          value: "sample-app:bad_password@tcp(mysql:3306)/sampledb"
+
