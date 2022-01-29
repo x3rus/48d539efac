@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: mysql:5.6
+        name: mysql
+        env:
+          # Improvement: use secrets for password
+        - name: MYSQL_ROOT_PASSWORD
+          value: ze_password
+        - name: MYSQL_USER
+          value: sample-user
+        - name: MYSQL_PASSWORD
+          value: bad_password
+        - name: MYSQL_DATABASE
+          value: sampledb
+        ports:
+        - containerPort: 3306
+          name: mysql
+
+# I do not have the right for persistent volume
+#        volumeMounts:
+#        - name: mysql-persistent-storage
+#          mountPath: /var/lib/mysql
+#      volumes:
+#      - name: mysql-persistent-storage
+#        persistentVolumeClaim:
+#          claimName: mysql-pv-claim
