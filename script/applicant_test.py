@@ -21,8 +21,8 @@ def mocked_requests_get_list_clients(*args, **kwargs):
     if args[0] == 'http://fakeurl.com/api/v1/client':
         return MockResponse([], 200)
     elif args[0] == 'http://fakeurl-populated.com/api/v1/client':
-        return MockResponse([{"id": "1234", "name": "first client", "url": "http://google.com"},
-                            {"id": "9876", "name": "second client", "url": "http://yahoo.com"}], 200)
+        return MockResponse(b'[{"id": "1234", "name": "first client", "url": "http://google.com"}, \
+                            {"id": "9876", "name": "second client", "url": "http://yahoo.com"}]', 200)
     elif args[0] == 'http://fakeurl-dberror.com/api/v1/client':
         return MockResponse({"error": "unable db connection"}, 500)
 

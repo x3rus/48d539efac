@@ -9,6 +9,7 @@
 import csv
 import requests
 import logging
+import json
 
 
 class applicant():
@@ -43,11 +44,17 @@ class applicant():
         return clients
 
     def getClientList(self):
+        """ return list of client in the app
+
+        return http code, client list ( empty if http code is not 200)
+        """
         response = requests.get(self.getAppUrl() + "/client")
 
         clients = []
         if response.status_code == 200:
-            clients = response.content
+            if len(response.content) > 0:
+                http_string = response.content.decode('utf-8')
+                clients = json.loads(http_string)
         else:
             logging.warning("Getting clients list return an issue http code : %d / messge %s", response.status_code,
                             response.content)
@@ -55,11 +62,26 @@ class applicant():
         return (response.status_code, clients)
 
     def getOneClient(self, c_id):
+        """ retreive one client and return it in json format
+        """
         response = requests.get(self.getAppUrl() + "/client/" + c_id)
-        return response.content
+
+        if response.status_code == 200:
+            http_string = response.content.decode('utf-8')
+            json_obj = json.loads(http_string)
+            return response.status_code, json_obj
+
+        if response.status_code == 404:
+            return response.status_code, {}
+
+        logging.error("Problem when contacting the app: %s", response.content)
+        return response.status_code, {}
 
     def addClient(self, c_id, c_name, c_url):
-        """ add a client to the app """
+        """ add a client to the app
+
+        return http code, client information added OR None
+        """
         # create json structure
         client_json = {
             "id": c_id,
@@ -67,19 +89,25 @@ class applicant():
             "url": c_url
         }
         r = requests.post(self.getAppUrl() + "/client", json=client_json)
-        print(r)
+
+        if r.status_code == 200:
+            return(r.status_code, client_json)
+        if r.status_code == 409:
+            logging.warning("client ID %s , already exist", c_id)
+        else:
+            logging.warning("Error adding client http code: %d / %s", r.status_code, r.content)
+
+        return(r.status_code, None)
 
     def delClient(self, c_id):
         r = requests.delete(self.getAppUrl() + "/client/" + c_id)
         print(r)
 
-    def updateClient(self, c_id, c_name=None, c_url=None, c_reachable=None, c_status=None):
+    def updateClient(self, c_id, c_name="", c_url=""):
         client_json = {
             "id": c_id,
             "name": c_name,
             "url": c_url,
-            "reachable": "",
-            "status": ""
         }
         r = requests.put(self.getAppUrl() + "/client/", json=client_json)
         print(r)
@@ -90,17 +118,15 @@ if __name__ == "__main__":
     print(app.getClientList())
 
     app.addClient("1234", "ze_client", "http://goototogle.com")
+    app.addClient("987", "ze_client", "http://goototogle.com")
     print(app.getClientList())
 
-    print(app.getOneClient("1234"))
+    code, toto = app.getOneClient("1234")
+    print(toto['url'])
 
-    app.addClient("9876", "ze_second_client", "http://google.com")
-    print(app.getClientList())
-
-    print(app.getOneClient("9876"))
+    code, toto = app.getOneClient("987")
+    print(toto['id'])
 
     app.delClient("1234")
-    print(app.getClientList())
-
-    app.delClient("9876")
+    app.delClient("987")
     print(app.getClientList())
