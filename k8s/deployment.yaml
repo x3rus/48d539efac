@@ -24,7 +24,32 @@ spec:
         - name: APP_SERVER_BIND_PORT
           value: "60021"
         - name: APP_DATABASE_DSN     # Improvement: use a secret to store the password
-          value: "sample-app:bad_password@tcp(mysql:3306)/sampledb"
+          value: "sample-app:$SECRET_PASSWORD@tcp(mysql:3306)/sampledb"
+        - name: SECRET_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-user-password
+              key: password
+        resources:
+          requests:
+            memory: "50Mi"
+            cpu: "250m"
+          limits:
+            memory: "100Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 60021
+          initialDelaySeconds: 5 
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 60021
+          initialDelaySeconds: 3
+          periodSeconds: 3
+
 ---
 apiVersion: v1
 kind: Service
