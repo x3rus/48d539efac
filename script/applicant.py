@@ -37,7 +37,7 @@ class applicant():
             for row in csv_content:
                 clients.append(row)
         except Exception as e:
-            print("An error occur, the script will return an empty array.")
+            print("An error occur, the script returned an empty array.")
             print('the exception occurred: {}'.format(e))
         else:
             fd.close()
@@ -100,33 +100,97 @@ class applicant():
         return(r.status_code, None)
 
     def delClient(self, c_id):
-        r = requests.delete(self.getAppUrl() + "/client/" + c_id)
-        print(r)
+        """ delete client
+        return true or false
+        """
+        response = requests.delete(self.getAppUrl() + "/client/" + c_id)
+
+        if response.status_code == 200:
+            return True
+        else:
+            logging.error("Problem deleting client : %s, got error : %s", c_id, response.content)
+
+        return False
 
     def updateClient(self, c_id, c_name="", c_url=""):
+        """ Update client information """
         client_json = {
             "id": c_id,
             "name": c_name,
             "url": c_url,
         }
+        # Need big improvement but it was to test / validate some behavior
         r = requests.put(self.getAppUrl() + "/client/", json=client_json)
         print(r)
 
+    def isHealthy(self):
+        """
+        check if the app is healthy
+        """
+        response = requests.get(self.getAppUrl() + "/healthz")
+        if response.status_code == 200:
+            return True
+        else:
+            return False
+
+    def compareClientInfo(self, c_id, c_name, c_url, mustBeRecheable=False):
+        """ compare client information
+
+        return true if information match, we can add criteria like must be recheable.
+        """
+        http_code, client_in_app = self.getOneClient(c_id)
+        if http_code != 200:
+            return False
+
+        # compare
+        if c_id == client_in_app['id'] and \
+           c_name == client_in_app['name'] and \
+           c_url == client_in_app['url']:
+            if mustBeRecheable is False:
+                return True
+            else:
+                return client_in_app['reachable']
+
 
 if __name__ == "__main__":
-    app = applicant("https://interview-48d539efac.interview.vme.dev/api", "v1", logging.DEBUG)
-    print(app.getClientList())
 
-    app.addClient("1234", "ze_client", "http://goototogle.com")
-    app.addClient("987", "ze_client", "http://goototogle.com")
-    print(app.getClientList())
+    # Improvement add commande line argument because it's a script otherwise I will use env variables
+    app_url = "https://interview-48d539efac.interview.vme.dev/api"
+    cvs_file = 'clients.csv'
 
-    code, toto = app.getOneClient("1234")
-    print(toto['url'])
+    # APPLICATION CONNECTION
+    app = applicant(app_url, "v1", logging.WARNING)
 
-    code, toto = app.getOneClient("987")
-    print(toto['id'])
+    # check if the app is healthy before pushing content
+    if app.isHealthy() is False:
+        print("ERROR: the applicationg is not healthy , fix it before running the script")
 
-    app.delClient("1234")
-    app.delClient("987")
-    print(app.getClientList())
+    # DATA LOADING
+    # Loading csv file with info
+    clients_retreived = app.extractClientFromCsv(cvs_file)
+
+    # push it to the application
+    for client in clients_retreived:
+        if len(client) != 3:
+            print("ERROR: field number is not ok for this client entry")
+            print(client)
+
+        if app.addClient(client[0], client[1], client[2]) is None:
+            print("ERROR: when I try to add client %s", client[0])
+
+    # DATA VALIDATION
+    # I reuse csv information loaded previously
+
+    all_data_is_csv_is_in_the_app = True
+    lst_of_client_in_error = []
+
+    for client in clients_retreived:
+        if app.compareClientInfo(client[0], client[1], client[2], True) is False:
+            all_data_is_csv_is_in_the_app = False
+            lst_of_client_in_error.append(client[0])
+
+    if all_data_is_csv_is_in_the_app is False:
+        print('ERROR: all client not in the app please check those : ')
+        print(lst_of_client_in_error)
+
+    # No Error so no message
