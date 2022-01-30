@@ -3,23 +3,56 @@
 # Author: Thomas Boutry <thomas.boutry@x3rus.com>
 ##################################################
 
+# Modules
+# improvement : import only method we use ...
+
+import csv
 import requests
+import logging
 
 
 class applicant():
     """application to interact with sample-app"""
-    def __init__(self, baseurl, version):
+    def __init__(self, baseurl, version, log_level=logging.INFO):
         """Init applicant"""
         self.baseurl = baseurl
         self.version = version
+        logging.basicConfig(level=log_level)
 
     def getAppUrl(self):
-        """Return full url"""
+        """Return structured url to reach app"""
         return self.baseurl + "/" + self.version
+
+    def extractClientFromCsv(self, csv_file):
+        """ extract list of client from a csv file
+
+        return clients dictionnary
+        """
+        clients = []
+        try:
+            fd = open(csv_file)
+            csv_content = csv.reader(fd)
+            next(csv_content)
+            for row in csv_content:
+                clients.append(row)
+        except Exception as e:
+            print("An error occur, the script will return an empty array.")
+            print('the exception occurred: {}'.format(e))
+        else:
+            fd.close()
+        return clients
 
     def getClientList(self):
         response = requests.get(self.getAppUrl() + "/client")
-        return response.content
+
+        clients = []
+        if response.status_code == 200:
+            clients = response.content
+        else:
+            logging.warning("Getting clients list return an issue http code : %d / messge %s", response.status_code,
+                            response.content)
+
+        return (response.status_code, clients)
 
     def getOneClient(self, c_id):
         response = requests.get(self.getAppUrl() + "/client/" + c_id)
@@ -53,7 +86,7 @@ class applicant():
 
 
 if __name__ == "__main__":
-    app = applicant("https://interview-48d539efac.interview.vme.dev/api", "v1")
+    app = applicant("https://interview-48d539efac.interview.vme.dev/api", "v1", logging.DEBUG)
     print(app.getClientList())
 
     app.addClient("1234", "ze_client", "http://goototogle.com")
